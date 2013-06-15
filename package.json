@@ -1,0 +1,19 @@
+{
+    "author": "Bogdan Cirlig ",
+    "name": "tiger-geocoder",
+    "description": "US Address geocoder/reverse geocoder based on US Census TIGER database",
+    "version": "0.0.1",
+    "repository": {
+        "url": "git@github.com:bibanul/tiger-geocoder.git"
+    },
+    "main": "./lib/main",
+    "bin": {
+        "replaceme": "./bin/tiger-geocoder"
+    },
+    "dependencies": {},
+    "devDependencies": {},
+    "optionalDependencies": {},
+    "engines": {
+        "node": "*"
+    }
+}
