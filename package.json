@@ -6,11 +6,11 @@
     "repository": {
         "url": "git@github.com:bibanul/tiger-geocoder.git"
     },
-    "main": "./lib/main",
-    "bin": {
-        "replaceme": "./bin/tiger-geocoder"
+    "homepage" : "https://github.com/bibanul/tiger-geocoder",
+    "main": "./index.js",
+    "dependencies": {
+        "pg": "*"
     },
-    "dependencies": {},
     "devDependencies": {},
     "optionalDependencies": {},
     "engines": {
