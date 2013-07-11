@@ -19,7 +19,7 @@ You can pass a string representation of a location and a callback function to `g
 var geocoder = require('tiger-geocoder');
 
 // Geocoding
-geocoder.geocode("15337 Cherry ln, Markham, IL", function ( err, data, options ) {
+geocoder.geocode("15337 Cherry ln, Markham, IL", function ( err, data ) {
   // do something with data
 });
 
