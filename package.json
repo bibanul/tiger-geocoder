@@ -1,8 +1,9 @@
 {
     "author": "Bogdan Cirlig ",
     "name": "tiger-geocoder",
-    "description": "US Address geocoder/reverse geocoder based on US Census TIGER database",
-    "version": "0.0.1",
+    "description": "US Address geocoder/reverse geocoder based on free US Census TIGER database. Able to cache results in redis and also return response that matches Google Maps API format",
+    "keywords": ["geocode","tiger","google","census"],
+    "version": "0.1.2",
     "repository": {
         "url": "git@github.com:bibanul/tiger-geocoder.git"
     },
