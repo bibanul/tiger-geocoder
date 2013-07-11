@@ -48,12 +48,13 @@ You have an option to use the native JSON result or request it to be formatted t
 Google response style will look like standard [Google JSON Output](http://code.google.com/apis/maps/documentation/geocoding/#JSON)
 
 You can pass in an optional options hash as a last argument, useful for setting the following:
-`
+
+```javascript
     conString: a connection string to your postgres TIGER database. If not provided it will attempt to read it from heroku HEROKU_POSTGRESQL_BLUE_URL or default to tcp://username:password@localhost/geocoder
     redisClient: an instance of a redis connection where to store the geocoded results. If not provided, no caching will take place.
     cacheTTL: the Time-To-Live for the redis cache entry, defaults to 1 month
     responseFormat: empty string will use internal JSOn format, 'google' will return it in google maps V3 JSON format
-`
+```
 ###Testing:
 `nodeunit test-tiger-geocoder`
 
