@@ -1,7 +1,9 @@
 # Geocoder
-    US Geocoder module that works on top of TIGER Line data file from US Census bureau. Uses PostGIS min 2.x.
-    Assumes you have a readily available PostGIS 2 + PostgreSQL 9.1+ installed that also has TIGER 2010 database loaded (about 95 GiB).
-    If you need help getting it setup, drop me a mail. Loading the TIGER database in postgres usually takes 1 week. This can also be hosted on Heroku.
+    US Geocoder module that works on top of TIGER Line data file from US Census bureau.
+    Uses PostGIS min 2.x. Assumes you have a readily available PostGIS 2 + PostgreSQL 9.1+
+    installed that also has TIGER 2010 database loaded (about 95 GiB).
+    If you need help getting it setup, drop me a mail. Loading the TIGER database in postgres
+    usually takes 1 week. This can also be hosted on Heroku.
 
 ###Installation:
 
@@ -46,6 +48,7 @@ You have an option to use the native JSON result or request it to be formatted t
 Google response style will look like standard [Google JSON Output](http://code.google.com/apis/maps/documentation/geocoding/#JSON)
 
 You can pass in an optional options hash as a last argument, useful for setting the following:
+```javascript
 conString: a connection string to your postgres TIGER database. If not provided it will attempt to read it from heroku HEROKU_POSTGRESQL_BLUE_URL or default to tcp://username:password@localhost/geocoder
 redisClient: an instance of a redis connection where to store the geocoded results. If not provided, no caching will take place.
 cacheTTL: the Time-To-Live for the redis cache entry, defaults to 1 month
