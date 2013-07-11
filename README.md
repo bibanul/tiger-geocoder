@@ -23,21 +23,21 @@ geocoder.geocode("15337 Cherry ln, Markham, IL", function ( err, data, options )
   // do something with data
 });
 
-geocoder.geocode("Cherry ln, Markham, IL", function ( err, data, options ) {
+geocoder.geocode("Cherry ln, Markham, IL", function ( err, data ) {
   // do something with data
 });
 
-geocoder.geocode("Markham, IL", function ( err, data, options ) {
+geocoder.geocode("Markham, IL", function ( err, data ) {
   // do something with data
 });
 
-geocoder.geocode("60428", function ( err, data, options ) {
+geocoder.geocode("60428", function ( err, data ) {
   // do something with data
 });
 
 
 // Reverse Geocoding
-geocoder.reverseGeocode( 33.7489, -84.3789, function ( err, data, options ) {
+geocoder.reverseGeocode( 33.7489, -84.3789, function ( err, data ) {
   // do something with data
 });
 
@@ -50,10 +50,10 @@ Google response style will look like standard [Google JSON Output](http://code.g
 You can pass in an optional options hash as a last argument, useful for setting the following:
 
 ```javascript
-    conString: a connection string to your postgres TIGER database. If not provided it will attempt to read it from heroku HEROKU_POSTGRESQL_BLUE_URL or default to tcp://username:password@localhost/geocoder
-    redisClient: an instance of a redis connection where to store the geocoded results. If not provided, no caching will take place.
-    cacheTTL: the Time-To-Live for the redis cache entry, defaults to 1 month
-    responseFormat: empty string will use internal JSOn format, 'google' will return it in google maps V3 JSON format
+conString: a connection string to your postgres TIGER database. If not provided it will attempt to read it from heroku HEROKU_POSTGRESQL_BLUE_URL or default to tcp://username:password@localhost/geocoder
+redisClient: an instance of a redis connection where to store the geocoded results. If not provided, no caching will take place.
+cacheTTL: the Time-To-Live for the redis cache entry, defaults to 1 month
+responseFormat: empty string will use internal JSOn format, 'google' will return it in google maps V3 JSON format
 ```
 ###Testing:
 `nodeunit test-tiger-geocoder`
