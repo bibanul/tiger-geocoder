@@ -1,9 +1,15 @@
 # Geocoder
-    US Geocoder module that works on top of TIGER Line data file from US Census bureau.
-    Uses PostGIS min 2.x. Assumes you have a readily available PostGIS 2 + PostgreSQL 9.1+
-    installed that also has TIGER 2010 database loaded (about 95 GiB).
+    US Geocoder module that works on top of free TIGER Line data file from US Census bureau.
+    Uses PostGIS min 2.x. Do your own geocoding for high volume and avoid paying to 3rd party providers.
+
+    Assumes you have a readily available PostGIS 2 + PostgreSQL 9.1+
+    installed that also has TIGER 2010 database loaded (about 95 GiB). Instructions on
+    installing Tiger are found here: http://postgis.net for postgis module and
+    http://postgis.net/docs/manual-2.0/postgis_installation.html#loading_extras_tiger_geocoder
+
     If you need help getting it setup, drop me a mail. Loading the TIGER database in postgres
-    usually takes 1 week. This can also be hosted on Heroku.
+    usually takes 1 week. This can also be hosted on Heroku. I ended up buying an SSD drive
+    and creating an Ubuntu Xen VM on it that simply runs Postgres 9.1 + PostGis 2.0 + 95GB Tiger DB and Redis store.
 
 ###Installation:
 
@@ -17,27 +23,28 @@ You can pass a string representation of a location and a callback function to `g
 
 ```javascript
 var geocoder = require('tiger-geocoder');
+var options = {'connString': 'tcp://localhost/geocoder', 'redisString':''};   //assumes you have postgres + TIGER DB running locally under "geocoder" database. Change accordingly
 
 // Geocoding
-geocoder.geocode("15337 Cherry ln, Markham, IL", function ( err, data ) {
+geocoder.geocode("15337 Cherry ln, Markham, IL", options, function ( err, data ) {
   // do something with data
 });
 
-geocoder.geocode("Cherry ln, Markham, IL", function ( err, data ) {
+geocoder.geocode("Cherry ln, Markham, IL", options, function ( err, data ) {
   // do something with data
 });
 
-geocoder.geocode("Markham, IL", function ( err, data ) {
+geocoder.geocode("Markham, IL", options, function ( err, data ) {
   // do something with data
 });
 
-geocoder.geocode("60428", function ( err, data ) {
+geocoder.geocode("60428", options, function ( err, data ) {
   // do something with data
 });
 
 
 // Reverse Geocoding
-geocoder.reverseGeocode( 33.7489, -84.3789, function ( err, data ) {
+geocoder.reverseGeocode( 33.7489, -84.3789, options, function ( err, data ) {
   // do something with data
 });
 
@@ -51,7 +58,7 @@ You can pass in an optional options hash as a last argument, useful for setting 
 
 ```javascript
 conString: a connection string to your postgres TIGER database. If not provided it will attempt to read it from heroku HEROKU_POSTGRESQL_BLUE_URL or default to tcp://username:password@localhost/geocoder
-redisClient: an instance of a redis connection where to store the geocoded results. If not provided, no caching will take place.
+redisString: a connection string to an instance of a redis to use. local redis will be used otherwise.
 cacheTTL: the Time-To-Live for the redis cache entry, defaults to 1 month
 responseFormat: empty string will use internal JSOn format, 'google' will return it in google maps V3 JSON format
 ```

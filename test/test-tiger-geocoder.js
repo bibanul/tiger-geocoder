@@ -1,5 +1,6 @@
 geocoder = require('../index.js');
 
+
 module.exports = {
 
     testExposeGeocodeFunction: function(test){
@@ -9,7 +10,7 @@ module.exports = {
 
     testGeocodeStreet: function(test){
         test.expect(2);
-        geocoder.geocode("cherry ln, markham, il", function(err, result){
+        geocoder.geocode("cherry ln, markham, il", null, function(err, result){
             test.ok(!err);
             test.ok(result.result.formatted_address.match(/Markham/));
             console.log(result);
@@ -19,9 +20,9 @@ module.exports = {
 
     testGeocodeFullAddress: function(test){
         test.expect(2);
-        geocoder.geocode("15337 cherry ln, markham, il 60428", function(err, result){
+        geocoder.geocode("15337 cherry ln, markham, il 60428", null, function(err, result){
             test.ok(!err);
-            test.ok(result.result.formatted_address.match(/Markham/));
+            test.ok(result.result.formatted_address.match(/Cherry/));
             console.log(result);
             test.done();
         });
@@ -29,7 +30,7 @@ module.exports = {
 
     testGeocodeCity: function(test){
         test.expect(2);
-        geocoder.geocode("markham, il", function(err, result){
+        geocoder.geocode("markham, il", null, function(err, result){
             test.ok(!err);
             test.ok(result.result.formatted_address.match(/Markham/));
             console.log(result);
@@ -38,21 +39,22 @@ module.exports = {
     },
     testGeocodeZipcode: function(test){
         test.expect(2);
-        geocoder.geocode("60426", function(err, result){
+        geocoder.geocode("60426", null, function(err, result){
             test.ok(!err);
             test.ok(result.result.formatted_address.match(/60426/));
             console.log(result);
             test.done();
         });
     },
-    testGeocodeState: function(test){
-        test.expect(1);
-        geocoder.geocode("Illinois", function(err, result){
-            test.ok(err);
+
+    testReverseGeocode: function(test){
+        test.expect(2);
+        geocoder.reverseGeocode(41.6136241828052, -87.7042010885112, null, function(err, result){
+            test.ok(!err);
+            test.ok(result.result.formatted_address.match(/Cherry/));
+            console.log(result);
             test.done();
         });
     }
-
-
 
 }
