@@ -71,10 +71,11 @@ Geocoder.prototype = {
                         //hydrate GeocodeResponse
                         parseResult({format:options.responseFormat || ''}, result, GeocodeResponse);
 
-                        //push to redis
-                        redis.set('geo:' + location, JSON.stringify(result));
-                        redis.expire('geo:' + location, options.cacheTTL || 2592000);  //if ttl is not provided we expire it in 30 days
-
+                        //push to redis if rhe accuracy returned is less than 20
+                        if (GeocodeResponse.accuracy <= 30){
+                            redis.set('geo:' + location, JSON.stringify(result));
+                            redis.expire('geo:' + location, options.cacheTTL || 2592000);  //if ttl is not provided we expire it in 30 days
+                        }
                         return callback(null, GeocodeResponse);
                     });
                 })

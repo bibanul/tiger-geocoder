@@ -23,7 +23,6 @@ You can pass a string representation of a location and a callback function to `g
 
 ```javascript
 var geocoder = require('tiger-geocoder');
-var options = {'connString': 'tcp://localhost/geocoder', 'redisString':''};   //assumes you have postgres + TIGER DB running locally under "geocoder" database. Change accordingly
 
 // Geocoding
 geocoder.geocode("15337 Cherry ln, Markham, IL", options, function ( err, data ) {
