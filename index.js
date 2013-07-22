@@ -71,12 +71,10 @@ Geocoder.prototype = {
                         //hydrate GeocodeResponse
                         parseResult({format:options.responseFormat || ''}, result, GeocodeResponse);
 
-                        //push to redis if rhe accuracy returned is less than 20
-                        if (GeocodeResponse.accuracy <= 30){
-                            redis.set('geo:' + location, JSON.stringify(result));
+                        redis.set('geo:' + location, JSON.stringify(result), function(err, msg){
                             redis.expire('geo:' + location, options.cacheTTL || 2592000);  //if ttl is not provided we expire it in 30 days
-                        }
-                        return callback(null, GeocodeResponse);
+                            return callback(null, GeocodeResponse);
+                        });
                     });
                 })
             }
@@ -116,10 +114,11 @@ Geocoder.prototype = {
                         parseResult({format:options.responseFormat || ''}, result, GeocodeResponse);
 
                         //push to redis, if available
-                        redis.set('geo:' + lat + '-' + lng, JSON.stringify(result));
-                        redis.expire('geo:' + lat + '-' + lng, options.cacheTTL || 2592000);  //if ttl is not provided we expire it in 30 days
+                        redis.set('geo:' + lat + '-' + lng, JSON.stringify(result), function(err, res){
+                            redis.expire('geo:' + lat + '-' + lng, options.cacheTTL || 2592000);  //if ttl is not provided we expire it in 30 days
 
-                        return callback(null, GeocodeResponse);
+                            return callback(null, GeocodeResponse);
+                        });
                     })
                 })
             }
