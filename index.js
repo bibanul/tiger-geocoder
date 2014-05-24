@@ -52,7 +52,7 @@ Geocoder.prototype = {
         //check redis for a cached result
         redis.get('geo:' + location, function (err, result){
             if(result){
-                parseResult({format:options.responseFormat || ''}, JSON.parse(result), GeocodeResponse);
+                Geocoder.prototype.parseResult({format:options.responseFormat || ''}, JSON.parse(result), GeocodeResponse);
                 return callback(null, GeocodeResponse);
             }
             else {
@@ -69,7 +69,7 @@ Geocoder.prototype = {
                         var result = results.rows[0];
 
                         //hydrate GeocodeResponse
-                        parseResult({format:options.responseFormat || ''}, result, GeocodeResponse);
+                        Geocoder.prototype.parseResult({format:options.responseFormat || ''}, result, GeocodeResponse);
 
                         redis.set('geo:' + location, JSON.stringify(result), function(err, msg){
                             redis.expire('geo:' + location, options.cacheTTL || 2592000);  //if ttl is not provided we expire it in 30 days
@@ -111,7 +111,7 @@ Geocoder.prototype = {
 
                         var result = results.rows[0];
                         //hydrate GeocodeResponse, a structure that follows Google Maps API v3 format
-                        parseResult({format:options.responseFormat || ''}, result, GeocodeResponse);
+                        Geocoder.prototype.parseResult({format:options.responseFormat || ''}, result, GeocodeResponse);
 
                         //push to redis, if available
                         redis.set('geo:' + lat + '-' + lng, JSON.stringify(result), function(err, res){
@@ -123,94 +123,94 @@ Geocoder.prototype = {
                 })
             }
         });
-    }
-};
+    },
 
-function parseResult(options, result, callback){
-    switch (options.format.toLowerCase()){
-        case 'google':
-            callback.result = {
-                'accuracy': result.rating,  //accuracy as provided by PostGIS rating result. lower more accurate. from 1 to 100.
-                'formatted_address':row.normalized_address,
-                'geometry':{
+    parseResult: function (options, result, callback){
+        switch (options.format.toLowerCase()){
+            case 'google':
+                callback.result = {
+                    'accuracy': result.rating,  //accuracy as provided by PostGIS rating result. lower more accurate. from 1 to 100.
+                    'formatted_address':row.normalized_address,
+                    'geometry':{
+                        'location': {
+                            'lat': result.lat,
+                            'lon': result.lon
+                        }
+                    },
+                    'address_component':[]
+                };
+                //test for address parts and push them into the result
+                if (result.streetnumber){
+                    if (!callback.result.types) callback.result.types = ['street_address'],
+                    callback.result.address_component.push({
+                        'type':['street_number'],
+                        'long_name':result.streetnumber,
+                        'short_name':result.streetnumber
+                    })
+                }
+                if (result.street){
+                    if (!callback.result.types) callback.result.types = ['route'],
+                    callback.result.address_component.push({
+                        'type':['route'],
+                        'long_name':result.street,
+                        'short_name':result.street
+                    })
+                }
+                if (result.city){
+                    if (!callback.result.types) callback.result.types = ['locality'],
+                    callback.result.address_component.push({
+                        'type':['locality'],
+                        'long_name':result.city,
+                        'short_name':result.city
+                    });
+                }
+                if (result.zip){
+                    if (!callback.result.types) callback.result.types = ['postal_code'],
+                    callback.result.address_component.push({
+                        'type':['postal_code'],
+                        'long_name':result.zip,
+                        'short_name':result.zip
+                    });
+                }
+                if (result.state){
+                    if (!callback.result.types) callback.result.types = ['administrative_area_level_1'],
+                        callback.result.address_component.push({
+                            'type':['administrative_area_level_1'],
+                            //'long_name':,
+                            'short_name':result.state
+                        });
+                }
+                break;
+
+            default:
+                callback.result = {
+                    'accuracy': result.rating,  //accuracy as provided by PostGIS rating result. lower more accurate. from 1 to 100.
+                    'formatted_address': result.normalized_address,
                     'location': {
                         'lat': result.lat,
                         'lon': result.lon
-                    }
-                },
-                'address_component':[]
-            };
-            //test for address parts and push them into the result
-            if (result.streetnumber){
-                if (!callback.result.types) callback.result.types = ['street_address'],
-                callback.result.address_component.push({
-                    'type':['street_number'],
-                    'long_name':result.streetnumber,
-                    'short_name':result.streetnumber
-                })
+                    }};
+                if (result.streetnumber){
+                    callback.result.streetNumber = result.streetnumber;
+                }
+                if (result.street){
+                    callback.result.street = result.street;
+                }
+                if (result.streettype){
+                    callback.result.streetType = result.streettype;
+                }
+                if (result.city){
+                    callback.result.city = result.city;
+                }
+                if (result.state){
+                    callback.result.state = result.state;
+                }
+                if (result.zip){
+                    callback.result.zipcode = result.zip;
+                }
             }
-            if (result.street){
-                if (!callback.result.types) callback.result.types = ['route'],
-                callback.result.address_component.push({
-                    'type':['route'],
-                    'long_name':result.street,
-                    'short_name':result.street
-                })
-            }
-            if (result.city){
-                if (!callback.result.types) callback.result.types = ['locality'],
-                callback.result.address_component.push({
-                    'type':['locality'],
-                    'long_name':result.city,
-                    'short_name':result.city
-                });
-            }
-            if (result.zip){
-                if (!callback.result.types) callback.result.types = ['postal_code'],
-                callback.result.address_component.push({
-                    'type':['postal_code'],
-                    'long_name':result.zip,
-                    'short_name':result.zip
-                });
-            }
-            if (result.state){
-                if (!callback.result.types) callback.result.types = ['administrative_area_level_1'],
-                    callback.result.address_component.push({
-                        'type':['administrative_area_level_1'],
-                        //'long_name':,
-                        'short_name':result.state
-                    });
-            }
-            break;
-
-        default:
-            callback.result = {
-                'accuracy': result.rating,  //accuracy as provided by PostGIS rating result. lower more accurate. from 1 to 100.
-                'formatted_address': result.normalized_address,
-                'location': {
-                    'lat': result.lat,
-                    'lon': result.lon
-                }};
-            if (result.streetnumber){
-                callback.result.streetNumber = result.streetnumber;
-            }
-            if (result.street){
-                callback.result.street = result.street;
-            }
-            if (result.streettype){
-                callback.result.streetType = result.streettype;
-            }
-            if (result.city){
-                callback.result.city = result.city;
-            }
-            if (result.state){
-                callback.result.state = result.state;
-            }
-            if (result.zip){
-                callback.result.zipcode = result.zip;
-            }
+        }
     }
-}
 
 
 /**
