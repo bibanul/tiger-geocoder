@@ -10,7 +10,7 @@ module.exports = {
 
     testGeocodePAGCException: function(test){
       test.expect(3);
-      geocoder.geocode("2721 montavo pl 95008", null, function(err, result){
+      geocoder.geocode("2732 montavo pl 95008", null, function(err, result){
         test.ok(!err);
         test.ok(result.result.formatted_address.match(/montavo/i));
         test.ok(result.result.accuracy <20);

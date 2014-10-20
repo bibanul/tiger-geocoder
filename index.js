@@ -82,6 +82,7 @@ Geocoder.prototype = {
               //PAGC call if needed
               if (process.env.PAGC && geocoderResult.rows.length > 0 && geocoderResult.rows[0].rating >= 20) {
                 //try PAGC parser
+                if (process.env.development) console.log("Trying PAGC for address: " + location);
                 pg.connect(conString, function (err, client, done) {
                   if (err) {
                     return callback(err, null)
@@ -109,9 +110,8 @@ Geocoder.prototype = {
             Geocoder.prototype.parseResult({format:options.responseFormat || ''}, result, GeocodeResponse);
             redis.set('geo:' + location, JSON.stringify(GeocodeResponse), function(err, msg){
               redis.expire('geo:' + location, options.cacheTTL || 2592000);  //if ttl is not provided we expire it in 30 days
+              callback(null, GeocodeResponse);  //no need to wait for redis (maybe it's down?)
             });
-
-            callback(null, GeocodeResponse);  //no need to wait for redis (maybe it's down?)
           });
         } //end redis check callback
       })
