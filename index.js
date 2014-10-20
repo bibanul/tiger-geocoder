@@ -7,7 +7,9 @@
  * pg
  */
 
-var pg = require('pg');
+var pg = require('pg')
+  , async = require("async")
+  ;
 var conString = process.env.HEROKU_POSTGRESQL_BLUE_URL || process.env.POSTGRESQL_URL || "tcp://username:password@localhost/geocoder";
 var redis;
 if (process.env.REDISCLOUD_URL || process.env.REDISTOGO_URL || process.env.REDIS_URL) {
@@ -49,36 +51,70 @@ Geocoder.prototype = {
         if (!options) {options = {};}
         var GeocodeResponse = {};
 
-        //check redis for a cached result
-        redis.get('geo:' + location, function (err, result){
-            if(result){
-                Geocoder.prototype.parseResult({format:options.responseFormat || ''}, JSON.parse(result), GeocodeResponse);
-                return callback(null, GeocodeResponse);
-            }
-            else {
-                pg.connect(conString, function(err, client, done){
-                    if(err) {return callback( err, null )}
-                    client.query( {name: 'tiger_geocode' , text:"SELECT g.rating, ST_X(g.geomout) As lon, ST_Y(g.geomout) As lat,"+
-                        "(addy).address As streetnumber, (addy).streetname As street, "+
-                        "(addy).streettypeabbrev As streettype, (addy).location As city, (addy).stateabbrev As state, (addy).zip As zip, (pprint_addy(addy)) As normalized_address "+
-                        "FROM geocode($1, 1) As g LIMIT 1", values:[location]}, function(err, results){
-                        done();   //disconnect from pg and return the client to the pool
-                        if(err) {return callback( err, null )}
-                        if (results.rows.length == 0){return callback(new Error( "Address not found."), null)}
-
-                        var result = results.rows[0];
-
-                        //hydrate GeocodeResponse
-                        Geocoder.prototype.parseResult({format:options.responseFormat || ''}, result, GeocodeResponse);
-
-                        redis.set('geo:' + location, JSON.stringify(result), function(err, msg){
-                            redis.expire('geo:' + location, options.cacheTTL || 2592000);  //if ttl is not provided we expire it in 30 days
-                            return callback(null, GeocodeResponse);
-                        });
-                    });
+      redis.get('geo:' + location, function (err, result) {
+        if (result) {
+          result = JSON.parse(result);
+          return callback(null, result);
+        }
+        else {
+          //geocode it
+          //use async to handle some magic scenarios here
+          async.waterfall([
+            function(callback) {
+              //if no redis result proceed with geocoding using tiger-geocoder. Here's the trick:
+              //address normalizers are not perfect, we use both pagc_normalize_address and the PostGIS normalize_address
+              //PAGC fails some simple parsing when street direction is provided such as 122 S. Main St while PostGIS one succeeds
+              //hence, we observed that PostGIS one succeeds more often hence we use it first, and in case we don't get a result under rank 20, we will make a second call using PAGC one
+              pg.connect(conString, function (err, client, done) {
+                if (err) {
+                  return callback(err, null)
+                }
+                client.query({name: 'tiger_geocode_postgis', text: "SELECT g.rating, ST_X(g.geomout) As lon, ST_Y(g.geomout) As lat," +
+                  "(addy).address As streetnumber, (addy).streetname As street, " +
+                  "(addy).streettypeabbrev As streettype, (addy).location As city, (addy).stateabbrev As state, (addy).zip As zip, (pprint_addy(addy)) As normalized_address " +
+                  "FROM geocode(normalize_address($1), 1) As g LIMIT 1", values: [location]}, function (err, results) {
+                  done();   //disconnect from pg and return the client to the pool
+                  return callback(err, results);
+                });
+              })
+            },
+            function(geocoderResult, callback) {
+              //PAGC call if needed
+              if (process.env.PAGC && geocoderResult.rows.length > 0 && geocoderResult.rows[0].rating >= 20) {
+                //try PAGC parser
+                pg.connect(conString, function (err, client, done) {
+                  if (err) {
+                    return callback(err, null)
+                  }
+                  client.query({name: 'tiger_geocode_pagc', text: "SELECT g.rating, ST_X(g.geomout) As lon, ST_Y(g.geomout) As lat," +
+                    "(addy).address As streetnumber, (addy).streetname As street, " +
+                    "(addy).streettypeabbrev As streettype, (addy).location As city, (addy).stateabbrev As state, (addy).zip As zip, (pprint_addy(addy)) As normalized_address " +
+                    "FROM geocode(pagc_normalize_address($1), 1) As g LIMIT 1", values: [location]},
+                    function (err, results) {
+                      done();   //disconnect from pg and return the client to the pool
+                      return callback(err, results)
+                    }
+                  );
                 })
-            }
-        })
+              } else {
+                return callback(null, geocoderResult);
+              }
+            }],
+          //handle final processing here
+          function(err, results){
+            //see if we have any result here and parse it
+            var result = results.rows[0];
+
+            //hydrate GeocodeResponse
+            Geocoder.prototype.parseResult({format:options.responseFormat || ''}, result, GeocodeResponse);
+            redis.set('geo:' + location, JSON.stringify(GeocodeResponse), function(err, msg){
+              redis.expire('geo:' + location, options.cacheTTL || 2592000);  //if ttl is not provided we expire it in 30 days
+            });
+
+            callback(null, GeocodeResponse);  //no need to wait for redis (maybe it's down?)
+          });
+        } //end redis check callback
+      })
     },
 
     //TODO: implement it based on reverse_geocode function in PostGIS
@@ -92,7 +128,7 @@ Geocoder.prototype = {
 
             redis.get('geo:' + lat + '-' + lng, function (err, result){
                 if(result){
-                    parseResult({format:options.responseFormat || ''}, JSON.parse(result), GeocodeResponse);
+                    Geocoder.prototype.parseResult({format:options.responseFormat || ''}, JSON.parse(result), GeocodeResponse);
                     return callback(null, GeocodeResponse);
                 }
             else {
@@ -130,7 +166,7 @@ Geocoder.prototype = {
             case 'google':
                 callback.result = {
                     'accuracy': result.rating,  //accuracy as provided by PostGIS rating result. lower more accurate. from 1 to 100.
-                    'formatted_address':row.normalized_address,
+                    'formatted_address':result.normalized_address,
                     'geometry':{
                         'location': {
                             'lat': result.lat,

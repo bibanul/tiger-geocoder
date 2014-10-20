@@ -1,21 +1,27 @@
 {
-    "author": "Bogdan Cirlig ",
-    "name": "tiger-geocoder",
-    "description": "US Address geocoder/reverse geocoder based on free US Census TIGER database. Able to cache results in redis and also return response that matches Google Maps API format",
-    "keywords": ["geocode","tiger","google","census"],
-    "version": "0.2.4",
-    "repository": {
-        "url": "git@github.com:bibanul/tiger-geocoder.git"
-    },
-    "homepage" : "https://github.com/bibanul/tiger-geocoder",
-    "main": "./index.js",
-    "dependencies": {
-        "pg": "*",
-        "redis": "*"
-    },
-    "devDependencies": {},
-    "optionalDependencies": {},
-    "engines": {
-        "node": "*"
-    }
+  "author": "Bogdan Cirlig ",
+  "name": "tiger-geocoder",
+  "description": "US Address geocoder/reverse geocoder based on free US Census TIGER database. Able to cache results in redis and also return response that matches Google Maps API format",
+  "keywords": [
+    "geocode",
+    "tiger",
+    "google",
+    "census"
+  ],
+  "version": "0.2.4",
+  "repository": {
+    "url": "git@github.com:bibanul/tiger-geocoder.git"
+  },
+  "homepage": "https://github.com/bibanul/tiger-geocoder",
+  "main": "./index.js",
+  "dependencies": {
+    "async": "^0.9.0",
+    "pg": "*",
+    "redis": "*"
+  },
+  "devDependencies": {},
+  "optionalDependencies": {},
+  "engines": {
+    "node": "*"
+  }
 }

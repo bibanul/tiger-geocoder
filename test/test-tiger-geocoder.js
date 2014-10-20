@@ -8,6 +8,17 @@ module.exports = {
         test.done();
     },
 
+    testGeocodePAGCException: function(test){
+      test.expect(3);
+      geocoder.geocode("2721 montavo pl 95008", null, function(err, result){
+        test.ok(!err);
+        test.ok(result.result.formatted_address.match(/montavo/i));
+        test.ok(result.result.accuracy <20);
+        console.log(result);
+        test.done();
+      });
+    },
+
     testGeocodeStreet: function(test){
         test.expect(2);
         geocoder.geocode("cherry ln, markham, il", null, function(err, result){
