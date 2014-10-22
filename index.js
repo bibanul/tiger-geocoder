@@ -93,6 +93,12 @@ Geocoder.prototype = {
                       "FROM geocode(pagc_normalize_address($1), 1) As g LIMIT 1", values: [location]},
                     function (err, results) {
                       done();   //disconnect from pg and return the client to the pool
+                      //if we had a previous result compare the rating with this one and return the better one (lower)
+                      if (!err &&
+                        (geocoderResult && results.rows.length == 0) ||
+                        (geocoderResult.rows.count > 0 && results.rows.length > 0 && geocoderResult.rows[0].rating > results.rows[0].rating)
+                        ) results = geocoderResult;
+
                       return cb(err, results)
                     }
                   );
@@ -107,6 +113,7 @@ Geocoder.prototype = {
 
             //see if we have any result here and parse it
             var result = results.rows[0];
+            if (!result) return callback(null, null); //nada
 
             //hydrate GeocodeResponse
             Geocoder.prototype.parseResult({format:options.responseFormat || ''}, result, GeocodeResponse);
