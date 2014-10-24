@@ -40,6 +40,7 @@ Geocoder.prototype = {
    * @param {Object} options, optional
    *  -> cacheTTL, a time to live in seconds for the redis entry, defaults to 1 hr
    *  -> responseFormat, format the response to match popular providers: google, bing, etc. Defaults to internal JSON format
+   *  -> includegeoid, to include the TIGER unique geoids for cross-referencing with Demographic tables or other external ACS data
    * @api public
    */
 
@@ -116,10 +117,13 @@ Geocoder.prototype = {
             if (!result) return callback(null, null); //nada
 
             //hydrate GeocodeResponse
-            Geocoder.prototype.parseResult({format:options.responseFormat || ''}, result, GeocodeResponse);
-            redis.set('geo:' + location, JSON.stringify(GeocodeResponse), function(err, msg){
-              redis.expire('geo:' + location, options.cacheTTL || 2592000);  //if ttl is not provided we expire it in 30 days
-              callback(null, GeocodeResponse);  //no need to wait for redis (maybe it's down?)
+            Geocoder.prototype.parseResult(options, result, function(err, GeocodeResponse){
+              if (err) return callback(err);
+
+              redis.set('geo:' + location, JSON.stringify(GeocodeResponse), function(err, msg){
+                redis.expire('geo:' + location, options.cacheTTL || 2592000);  //if ttl is not provided we expire it in 30 days
+                callback(null, GeocodeResponse);  //no need to wait for redis (maybe it's down?)
+              });
             });
           });
       } //end redis check callback
@@ -137,7 +141,7 @@ Geocoder.prototype = {
 
     redis.get('geo:' + lat + '-' + lng, function (err, result){
       if(result){
-        Geocoder.prototype.parseResult({format:options.responseFormat || ''}, JSON.parse(result), GeocodeResponse);
+        Geocoder.prototype.parseResult(options, JSON.parse(result), GeocodeResponse);
         return callback(null, GeocodeResponse);
       }
       else {
@@ -156,7 +160,7 @@ Geocoder.prototype = {
 
             var result = results.rows[0];
             //hydrate GeocodeResponse, a structure that follows Google Maps API v3 format
-            Geocoder.prototype.parseResult({format:options.responseFormat || ''}, result, GeocodeResponse);
+            Geocoder.prototype.parseResult(options, result, GeocodeResponse);
 
             //push to redis, if available
             redis.set('geo:' + lat + '-' + lng, JSON.stringify(result), function(err, res){
@@ -170,8 +174,10 @@ Geocoder.prototype = {
     });
   },
 
-  parseResult: function (options, result, callback){
-    switch (options.format.toLowerCase()){
+  parseResult: function (options, result, cb){
+    var callback = {};
+    var format = options.responseFormat || '';
+    switch (format.toLowerCase()){
       case 'google':
         callback.result = {
           'accuracy': result.rating,  //accuracy as provided by PostGIS rating result. lower more accurate. from 1 to 100.
@@ -254,6 +260,51 @@ Geocoder.prototype = {
           callback.result.zipcode = result.zip;
         }
     }
+
+    //attach GeoIds if user user requested it options.includegeoid
+    if (options.includegeoid){
+      Geocoder.prototype.attachGeoIds (callback, function(err, result){
+        cb(null, result);  //assign to original one to override and return it
+      });
+    }
+    else
+      cb(null, callback);
+  },
+
+  //attaches TIGER specific unique IDs to help cross-referencing external data in Demographic / Economic tables. Also includes Zillow neighborhoods (if loaded).
+  attachGeoIds: function (GeocodeResponse, callback){
+    pg.connect(conString, function(err, client, done){
+      if(err) {return callback( err, null )}
+
+      //select get_geoids(ST_GeomFromText('POINT(-121.93830710000000295 37.272289700000001744 )', 4269), normalize_address('2731 montavo pl, Campbell, ca, 95008'))
+
+      client.query({name:"tiger_get_geoids", text: "SELECT * FROM get_geoids(ST_SetSRID(ST_Point($2, $1),4326), $3, $4, $5 ) addy_ex",
+        values:[GeocodeResponse.result.location.lat, GeocodeResponse.result.location.lon, GeocodeResponse.result.city, GeocodeResponse.result.state, GeocodeResponse.result.zipcode]}, function(err, results) {
+        if (results.rows.length > 0) {
+          var result = results.rows[0];
+          if (result.cityid) GeocodeResponse.result.cityId = result.cityid;
+          if (result.stateid) GeocodeResponse.result.stateId = result.stateid;
+          if (result.neighborhoodid) {
+            GeocodeResponse.result.neighborhoodId = result.neighborhoodid;
+            GeocodeResponse.result.neighborhood = result.neighborhood;
+          }
+          if (result.tractid) {
+            GeocodeResponse.result.tractId = result.tractid;
+            GeocodeResponse.result.tract = result.tract;
+          }
+          if (result.countyid) {
+            GeocodeResponse.result.countyId = result.countyid;
+            GeocodeResponse.result.county = result.county;
+          }
+          if (result.metroid) {
+            GeocodeResponse.result.metroId = result.metroid;
+            GeocodeResponse.result.metro = result.metro;
+          }
+        }
+
+        callback(null, GeocodeResponse);
+      })
+    });
   }
 }
 
