@@ -282,7 +282,7 @@ Geocoder.prototype = {
         values:[GeocodeResponse.result.location.lat, GeocodeResponse.result.location.lon, GeocodeResponse.result.city, GeocodeResponse.result.state, GeocodeResponse.result.zipcode]}, function(err, results) {
         if (results.rows.length > 0) {
           var result = results.rows[0];
-          if (result.cityid) GeocodeResponse.result.cityId = result.cityid;
+          if (result.locationid) GeocodeResponse.result.cityId = result.locationid;
           if (result.stateid) GeocodeResponse.result.stateId = result.stateid;
           if (result.neighborhoodid) {
             GeocodeResponse.result.neighborhoodId = result.neighborhoodid;
