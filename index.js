@@ -153,6 +153,7 @@ Geocoder.prototype = {
             "rg.addy[1].streettypeabbrev As styp, rg.addy[1].location As city, rg.addy[1].stateabbrev As st, rg.addy[1].zip "+
             "FROM reverse_geocode(ST_SetSRID(ST_Point($2, $1),4326)) rg",
             values:[lat, lng]}, function(err, results){
+            done()
             if (results.rows.length == 0)
             {
               //TODO: return not found error
@@ -280,7 +281,8 @@ Geocoder.prototype = {
 
       client.query({name:"tiger_get_geoids", text: "SELECT * FROM get_geoids(ST_SetSRID(ST_Point($2, $1),4326), $3, $4, $5 ) addy_ex",
         values:[GeocodeResponse.result.location.lat, GeocodeResponse.result.location.lon, GeocodeResponse.result.city, GeocodeResponse.result.state, GeocodeResponse.result.zipcode]}, function(err, results) {
-        if (results.rows.length > 0) {
+        done();   //disconnect from pg and return the client to the pool
+        if (results && results.rows && results.rows.length > 0) {
           var result = results.rows[0];
           if (result.locationid) GeocodeResponse.result.cityId = result.locationid;
           if (result.stateid) GeocodeResponse.result.stateId = result.stateid;
