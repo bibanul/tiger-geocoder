@@ -154,9 +154,14 @@ Geocoder.prototype = {
             "FROM reverse_geocode(ST_SetSRID(ST_Point($2, $1),4326)) rg",
             values:[lat, lng]}, function(err, results){
             done()
-            if (results.rows.length == 0)
-            {
-              //TODO: return not found error
+              if (err) {
+                return callback(err, results)
+              }
+              if (!results || !results.rows) {
+                return callback(new Error('no rows found'), results)
+              }
+            if (results.rows.length == 0) {
+                return callback(new Error('no rows found'), results)
             }
 
             var result = results.rows[0];
@@ -282,6 +287,12 @@ Geocoder.prototype = {
       client.query({name:"tiger_get_geoids", text: "SELECT * FROM get_geoids(ST_SetSRID(ST_Point($2, $1),4326), $3, $4, $5 ) addy_ex",
         values:[GeocodeResponse.result.location.lat, GeocodeResponse.result.location.lon, GeocodeResponse.result.city, GeocodeResponse.result.state, GeocodeResponse.result.zipcode]}, function(err, results) {
         done();   //disconnect from pg and return the client to the pool
+          if (err) {
+            return callback(err)
+          }
+          if (!results || !results.rows) {
+            return callback(null, null)
+          }
         if (results && results.rows && results.rows.length > 0) {
           var result = results.rows[0];
           if (result.locationid) GeocodeResponse.result.cityId = result.locationid;
