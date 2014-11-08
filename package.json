@@ -8,7 +8,7 @@
     "google",
     "census"
   ],
-  "version": "0.3.6",
+  "version": "0.3.7",
   "repository": {
     "url": "git@github.com:bibanul/tiger-geocoder.git"
   },
