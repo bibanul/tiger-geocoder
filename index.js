@@ -41,6 +41,7 @@ Geocoder.prototype = {
    *  -> cacheTTL, a time to live in seconds for the redis entry, defaults to 1 hr
    *  -> responseFormat, format the response to match popular providers: google, bing, etc. Defaults to internal JSON format
    *  -> includegeoid, to include the TIGER unique geoids for cross-referencing with Demographic tables or other external ACS data
+   *  -> limitResults, number to limit the matches returned. defaults to 1
    * @api public
    */
 
@@ -49,7 +50,10 @@ Geocoder.prototype = {
     if ( ! location ) {
       return callback( new Error( "Geocoder.geocode requires a location."), null );
     }
-    if (!options) {options = {};}
+    if (!options) options = {}
+    options.limitResults = options.limitResults || 1;
+    options.cacheTTL = options.cacheTTL || 2592000;
+
     var GeocodeResponse = {};
 
     redis.get('geo:' + location, function (err, result) {
@@ -61,27 +65,95 @@ Geocoder.prototype = {
         //geocode it
         //use async to handle some magic scenarios here
         async.waterfall([
+            //try to identify if we do an intersection geocoding or go for full address
             function(cb) {
+              //identify cross street requests and try to normalize the components. Generally you see "Main st at Central Ave, New York, NY 02119".
+              location = location.toLocaleLowerCase();
+              location =
+                location.indexOf(" at ") >= 0 ? location.replace(" at ", " @ ") :
+                  location.indexOf(" & ") >= 0 ? location.replace(" & ", " @ ") :
+                    location.indexOf(" and ") >= 0 ? location.replace(" and ", " @ "): location
+              ;
+              if (location.indexOf(" @ ") >= 0) {
+                pg.connect(conString, function (err, client, done) {
+                  if (err) {
+                    return cb(err, null)
+                  }
+                  //use normalize_address to parse out what we can. generally it will come back as stree1 and stree2, based on this we decide
+                  async.waterfall([
+                    function(cbb){
+                      client.query({
+                        name: 'tiger_parse_address',
+                        text: "SELECT addy.street As street1, addy.street2 As street2, addy.city As city, addy.state As state, addy.zip As zip, addy.country as country " +
+                        "FROM parse_Address($1) As addy",
+                        values: [location]
+                      }, function (err, parsedAddress) {
+                        done();   //disconnect from pg and return the client to the pool
+                        return cbb(err, parsedAddress);
+                      });
+                    },
+                    function(parsedAddress, cbb) {
+                      //if we have enough data, we go for it.
+                      if (!parsedAddress || parsedAddress.rows.length === 0) return cbb(err,null); //no results
+
+                      var loc = parsedAddress.rows[0];
+                      if (loc.street1 && loc.street2 && ((loc.city && loc.state) || loc.zip)) {
+                        client.query({
+                          name: 'tiger_geocode_intersection',
+                          text: "SELECT g.rating, ST_X(g.geomout) As lon, ST_Y(g.geomout) As lat," +
+                          "(addy).streetname As street, " +
+                          "(addy).streettypeabbrev As streettype, (addy).location As city, (addy).stateabbrev As state, (addy).zip As zip, " +
+                          "(pprint_addy(addy)) As normalized_address " +
+                          "FROM geocode_intersection($1, $2, $3, $4, $5, $6) As g",
+                          values: [loc.street1, loc.street2, loc.state, loc.city, loc.zip, options.limitResults]
+                        }, function (err, geocoderResult) {
+                          done();   //disconnect from pg and return the client to the pool
+                          //massage the normalized display address to reflect the fact its an intersection
+                          if (geocoderResult && geocoderResult.rows.length > 0){
+                            geocoderResult.rows[0].normalized_address = geocoderResult.rows[0].street + " " + geocoderResult.rows[0].streettype + " @ " + loc.street2.capitalize() + ', ' + geocoderResult.rows[0].city + ", " + geocoderResult.rows[0].state + " " + geocoderResult.rows[0].zip;
+                          }
+                          return cbb(err, geocoderResult);
+                        });
+                      }
+                    }
+                  ], function(err, geocoderResult){
+                    //evaluate the result and decide how to continue main flow
+                    return cb(err, geocoderResult); //second result is our geocoded intersection
+                  });
+                })
+              } else {
+                return cb(null, null);  //nada, allow normal address geocoding to give it a shot
+              }
+            },
+            function(geocoderResult, cb) {
               //if no redis result proceed with geocoding using tiger-geocoder. Here's the trick:
               //address normalizers are not perfect, we use both pagc_normalize_address and the PostGIS normalize_address
               //PAGC fails some simple parsing when street direction is provided such as 122 S. Main St while PostGIS one succeeds
               //hence, we observed that PostGIS one succeeds more often hence we use it first, and in case we don't get a result under rank 20, we will make a second call using PAGC one
-              pg.connect(conString, function (err, client, done) {
-                if (err) {
-                  return cb(err, null)
-                }
-                client.query({name: 'tiger_geocode_postgis', text: "SELECT g.rating, ST_X(g.geomout) As lon, ST_Y(g.geomout) As lat," +
-                  "(addy).address As streetnumber, (addy).streetname As street, " +
-                  "(addy).streettypeabbrev As streettype, (addy).location As city, (addy).stateabbrev As state, (addy).zip As zip, (pprint_addy(addy)) As normalized_address " +
-                  "FROM geocode(normalize_address($1), 1) As g LIMIT 1", values: [location]}, function (err, results) {
-                  done();   //disconnect from pg and return the client to the pool
-                  return cb(err, results);
-                });
-              })
+              if (!geocoderResult || (geocoderResult && (geocoderResult.rows.length == 0 || geocoderResult.rows.length > 0 && geocoderResult.rows[0].rating >= 20))) {
+                pg.connect(conString, function (err, client, done) {
+                  if (err) {
+                    return cb(err, null)
+                  }
+                  client.query({
+                    name: 'tiger_geocode_postgis',
+                    text: "SELECT g.rating, ST_X(g.geomout) As lon, ST_Y(g.geomout) As lat," +
+                    "(addy).address As streetnumber, (addy).streetname As street, " +
+                    "(addy).streettypeabbrev As streettype, (addy).location As city, (addy).stateabbrev As state, (addy).zip As zip, (pprint_addy(addy)) As normalized_address " +
+                    "FROM geocode(normalize_address($1), $2) As g",
+                    values: [location, options.limitResults]
+                  }, function (err, results) {
+                    done();   //disconnect from pg and return the client to the pool
+                    return cb(err, results);
+                  });
+                })
+              } else {
+                return cb(null, geocoderResult);
+              }
             },
             function(geocoderResult, cb) {
               //PAGC call if needed
-              if (process.env.PAGC && geocoderResult.rows.length > 0 && geocoderResult.rows[0].rating >= 20) {
+              if (process.env.PAGC && (!geocoderResult || (geocoderResult && (geocoderResult.rows.length == 0 || geocoderResult.rows.length > 0 && geocoderResult.rows[0].rating >= 20)))) {
                 //try PAGC parser
                 if (process.env.development) console.log("Trying PAGC for address: " + location);
                 pg.connect(conString, function (err, client, done) {
@@ -91,7 +163,8 @@ Geocoder.prototype = {
                   client.query({name: 'tiger_geocode_pagc', text: "SELECT g.rating, ST_X(g.geomout) As lon, ST_Y(g.geomout) As lat," +
                       "(addy).address As streetnumber, (addy).streetname As street, " +
                       "(addy).streettypeabbrev As streettype, (addy).location As city, (addy).stateabbrev As state, (addy).zip As zip, (pprint_addy(addy)) As normalized_address " +
-                      "FROM geocode(pagc_normalize_address($1), 1) As g LIMIT 1", values: [location]},
+                      "FROM geocode(pagc_normalize_address($1), $2) As g",
+                      values: [location, options.limitResults]},
                     function (err, results) {
                       done();   //disconnect from pg and return the client to the pool
                       //if we had a previous result compare the rating with this one and return the better one (lower)
@@ -121,7 +194,7 @@ Geocoder.prototype = {
               if (err) return callback(err);
 
               redis.set('geo:' + location, JSON.stringify(GeocodeResponse), function(err, msg){
-                redis.expire('geo:' + location, options.cacheTTL || 2592000);  //if ttl is not provided we expire it in 30 days
+                redis.expire('geo:' + location, options.cacheTTL);  //if ttl is not provided we expire it in 30 days
                 callback(null, GeocodeResponse);  //no need to wait for redis (maybe it's down?)
               });
             });
@@ -136,13 +209,17 @@ Geocoder.prototype = {
       return callback( new Error( "Geocoder.reverseGeocode requires a latitude and longitude." ), null );
     }
 
-    if (!options) {options = {};}
+    if (!options) options = {}
+    options.limitResults = options.limitResults || 1;
+    options.cacheTTL = options.cacheTTL || 2592000;
+
     var GeocodeResponse = {};
 
     redis.get('geo:' + lat + '-' + lng, function (err, result){
       if(result){
-        Geocoder.prototype.parseResult(options, JSON.parse(result), GeocodeResponse);
-        return callback(null, GeocodeResponse);
+        Geocoder.prototype.parseResult(options, JSON.parse(result), function(err, GeocodeResponse) {
+          return callback(err, GeocodeResponse);
+        });
       }
       else {
         pg.connect(conString, function(err, client, done){
@@ -151,29 +228,32 @@ Geocoder.prototype = {
           client.query({name:"tiger_reverse_geocode", text: "SELECT (pprint_addy(rg.addy[1])) as normalized_address, $1 as lat, $2 as lon, "+
             "rg.addy[1].address As streetnumber, rg.addy[1].streetname As street, "+
             "rg.addy[1].streettypeabbrev As styp, rg.addy[1].location As city, rg.addy[1].stateabbrev As st, rg.addy[1].zip "+
-            "FROM reverse_geocode(ST_SetSRID(ST_Point($2, $1),4326)) rg",
-            values:[lat, lng]}, function(err, results){
-            done()
-              if (err) {
-                return callback(err, results)
-              }
-              if (!results || !results.rows) {
-                return callback(new Error('no rows found'), results)
-              }
+            "FROM reverse_geocode(ST_SetSRID(ST_Point($2, $1),4326)) rg LIMIT $3",
+            values:[lat, lng, options.limitResults]}, function(err, results){
+            done();
+            if (err) {
+              return callback(err, results)
+            }
+            if (!results || !results.rows) {
+              return callback(new Error('no rows found'), results)
+            }
             if (results.rows.length == 0) {
                 return callback(new Error('no rows found'), results)
             }
 
             var result = results.rows[0];
             //hydrate GeocodeResponse, a structure that follows Google Maps API v3 format
-            Geocoder.prototype.parseResult(options, result, GeocodeResponse);
+            //Geocoder.prototype.parseResult(options, result, GeocodeResponse);
+            Geocoder.prototype.parseResult(options, result, function(err, GeocodeResponse) {
+              if (err) return callback(err);
 
-            //push to redis, if available
-            redis.set('geo:' + lat + '-' + lng, JSON.stringify(result), function(err, res){
-              redis.expire('geo:' + lat + '-' + lng, options.cacheTTL || 2592000);  //if ttl is not provided we expire it in 30 days
+              //push to redis, if available
+              redis.set('geo:' + lat + '-' + lng, JSON.stringify(result), function (err, res) {
+                redis.expire('geo:' + lat + '-' + lng, options.cacheTTL);  //if ttl is not provided we expire it in 30 days
 
-              return callback(null, GeocodeResponse);
-            });
+                return callback(null, GeocodeResponse);
+              });
+            })
           })
         })
       }
@@ -327,3 +407,7 @@ Geocoder.prototype = {
  */
 
 module.exports = new Geocoder();
+
+String.prototype.capitalize = function() {
+  return this.charAt(0).toUpperCase() + this.slice(1);
+}
