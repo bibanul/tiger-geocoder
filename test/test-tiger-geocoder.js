@@ -8,11 +8,11 @@ module.exports = {
         test.done();
     },
 
-    testGeocodeIntersection: function(test){
+    testGeocodeIntersectionMalformed: function(test){
         test.expect(3);
         geocoder.geocode("83rd Street at Hayden & Mountain View, Scottsdale, AZ", null, function(err, result){
             test.ok(!err && result);
-            test.ok(result.result.formatted_address.match(/summit/i));
+            test.ok(result.result.formatted_address.match(/Scottsdale/i));
             test.ok(result.result.accuracy <20);
             console.log(result);
             test.done();

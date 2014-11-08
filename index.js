@@ -69,13 +69,13 @@ Geocoder.prototype = {
             //try to identify if we do an intersection geocoding or go for full address
             function(cb) {
               //identify cross street requests and try to normalize the components. Generally you see "Main st at Central Ave, New York, NY 02119".
-              location = location.toLocaleLowerCase();
-              location =
+              var parsedLoc = location.toLowerCase();
+              parsedLoc =
                 location.indexOf(" at ") >= 0 ? location.replace(" at ", " @ ") :
                   location.indexOf(" & ") >= 0 ? location.replace(" and ", " @ ") :
                     location.indexOf(" and ") >= 0 ? location.replace(" & ", " @ "): location
               ;
-              if (location.indexOf(" @ ") >= 0) {
+              if (parsedLoc.indexOf(" @ ") >= 0) {
                 pg.connect(conString, function (err, client, done) {
                   if (err) {
                     return cb(err, null)
@@ -87,7 +87,7 @@ Geocoder.prototype = {
                         name: 'tiger_parse_address',
                         text: "SELECT addy.street As street1, addy.street2 As street2, addy.city As city, addy.state As state, addy.zip As zip, addy.country as country " +
                         "FROM parse_Address($1) As addy",
-                        values: [location]
+                        values: [parsedLoc]
                       }, function (err, parsedAddress) {
                         done();   //disconnect from pg and return the client to the pool
                         return cbb(err, parsedAddress);
