@@ -97,7 +97,7 @@ Geocoder.prototype = {
                       if (!parsedAddress || parsedAddress.rows.length === 0) return cbb(err,null); //no results
 
                       var loc = parsedAddress.rows[0];
-                      if (loc.street1 && loc.street2 && ((loc.city && loc.state) || loc.zip)) {
+                      if (loc.street1 && loc.street2 && loc.state) { //state is mandatory, won't return anything w/o state
                         client.query({
                           name: 'tiger_geocode_intersection',
                           text: "SELECT g.rating, ST_X(g.geomout) As lon, ST_Y(g.geomout) As lat," +
@@ -105,7 +105,7 @@ Geocoder.prototype = {
                           "(addy).streettypeabbrev As streettype, (addy).location As city, (addy).stateabbrev As state, (addy).zip As zip, " +
                           "(pprint_addy(addy)) As normalized_address " +
                           "FROM geocode_intersection($1, $2, $3, $4, $5, $6) As g",
-                          values: [loc.street1, loc.street2, loc.state, loc.city, loc.zip, options.limitResults]
+                          values: [loc.street1, loc.street2, loc.state || '', loc.city || '', loc.zip || '', options.limitResults]  //must pass empty string param or else we get no tesults
                         }, function (err, geocoderResult) {
                           done();   //disconnect from pg and return the client to the pool
                           //massage the normalized display address to reflect the fact its an intersection

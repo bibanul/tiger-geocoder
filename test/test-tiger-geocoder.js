@@ -19,6 +19,30 @@ module.exports = {
         });
     },
 
+    testGeocodeIntersectionNoZip: function(test){
+        test.expect(3);
+        geocoder.geocode("harlem ave @ archer, summit, il", null, function(err, result){
+            test.ok(!err && result);
+            test.ok(result.result.formatted_address.match(/summit/i));
+            test.ok(result.result.accuracy <20);
+            console.log(result);
+            test.done();
+        });
+    },
+
+    testGeocodeIntersectionZipOnly: function(test){
+        test.expect(3);
+        geocoder.geocode("harlem ave @ archer, il 60501", null, function(err, result){
+            test.ok(!err && result);
+            test.ok(result.result.formatted_address.match(/summit/i));
+            test.ok(result.result.accuracy <20);
+            console.log(result);
+            test.done();
+        });
+    },
+
+
+
     testGeocodePAGCException: function(test){
       test.expect(3);
       geocoder.geocode("1821 s bascom ave 95008", {includegeoid: true}, function(err, result){
