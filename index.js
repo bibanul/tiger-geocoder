@@ -104,13 +104,13 @@ Geocoder.prototype = {
                           "(addy).streetname As street, " +
                           "(addy).streettypeabbrev As streettype, (addy).location As city, (addy).stateabbrev As state, (addy).zip As zip, " +
                           "(pprint_addy(addy)) As normalized_address " +
-                          "FROM geocode_intersection($1, $2, $3, $4, $5, $6) As g",
-                          values: [loc.street1, loc.street2, loc.state || '', loc.city || '', loc.zip || '', options.limitResults]  //must pass empty string param or else we get no tesults
+                          "FROM geocode_intersection($1, $2, $3, $4, $5, $6) As g ORDER BY (addy).zip ASC",
+                          values: [loc.street1, loc.street2, loc.state || '', loc.city || '', loc.zip || '', options.limitResults > 2 ? options.limitResults : 2]  //must pass empty string param or else we get no tesults
                         }, function (err, geocoderResult) {
                           done();   //disconnect from pg and return the client to the pool
                           //massage the normalized display address to reflect the fact its an intersection
                           if (geocoderResult && geocoderResult.rows.length > 0){
-                            geocoderResult.rows[0].normalized_address = geocoderResult.rows[0].street + " " + geocoderResult.rows[0].streettype + " @ " + loc.street2.capitalize() + ', ' + geocoderResult.rows[0].city + ", " + geocoderResult.rows[0].state + " " + geocoderResult.rows[0].zip;
+                            geocoderResult.rows[0].normalized_address = geocoderResult.rows[0].street + " " + geocoderResult.rows[0].streettype + " @ " + loc.street2.capitalize() + ', ' + geocoderResult.rows[0].city + ", " + geocoderResult.rows[0].state + (geocoderResult.rows[0].zip ? " " + geocoderResult.rows[0].zip : '');
                           }
                           return cbb(err, geocoderResult);
                         });
