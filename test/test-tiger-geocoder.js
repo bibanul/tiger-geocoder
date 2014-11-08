@@ -10,7 +10,7 @@ module.exports = {
 
     testGeocodeIntersection: function(test){
         test.expect(3);
-        geocoder.geocode("harlem ave @ archer, summit, il, 60501", null, function(err, result){
+        geocoder.geocode("83rd Street at Hayden & Mountain View, Scottsdale, AZ", null, function(err, result){
             test.ok(!err && result);
             test.ok(result.result.formatted_address.match(/summit/i));
             test.ok(result.result.accuracy <20);

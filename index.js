@@ -59,6 +59,7 @@ Geocoder.prototype = {
     redis.get('geo:' + location, function (err, result) {
       if (result) {
         result = JSON.parse(result);
+        console.log("Cache hit on: " + location);
         return callback(null, result);
       }
       else {
@@ -71,8 +72,8 @@ Geocoder.prototype = {
               location = location.toLocaleLowerCase();
               location =
                 location.indexOf(" at ") >= 0 ? location.replace(" at ", " @ ") :
-                  location.indexOf(" & ") >= 0 ? location.replace(" & ", " @ ") :
-                    location.indexOf(" and ") >= 0 ? location.replace(" and ", " @ "): location
+                  location.indexOf(" & ") >= 0 ? location.replace(" and ", " @ ") :
+                    location.indexOf(" and ") >= 0 ? location.replace(" & ", " @ "): location
               ;
               if (location.indexOf(" @ ") >= 0) {
                 pg.connect(conString, function (err, client, done) {
@@ -98,6 +99,10 @@ Geocoder.prototype = {
 
                       var loc = parsedAddress.rows[0];
                       if (loc.street1 && loc.street2 && loc.state) { //state is mandatory, won't return anything w/o state
+                        //check if street2 has an & in it. badly formatted but we need to clean up such cases and keep the first part before &
+                        if (loc.street2.indexOf(" & ")>= 0){
+                          loc.street2 = loc.street2.substring(0,loc.street2.indexOf(" & "));
+                        }
                         client.query({
                           name: 'tiger_geocode_intersection',
                           text: "SELECT g.rating, ST_X(g.geomout) As lon, ST_Y(g.geomout) As lat," +
@@ -212,8 +217,6 @@ Geocoder.prototype = {
     if (!options) options = {}
     options.limitResults = options.limitResults || 1;
     options.cacheTTL = options.cacheTTL || 2592000;
-
-    var GeocodeResponse = {};
 
     redis.get('geo:' + lat + '-' + lng, function (err, result){
       if(result){
