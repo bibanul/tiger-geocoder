@@ -103,22 +103,31 @@ Geocoder.prototype = {
                         if (loc.street2.indexOf(" & ")>= 0){
                           loc.street2 = loc.street2.substring(0,loc.street2.indexOf(" & "));
                         }
-                        client.query({
-                          name: 'tiger_geocode_intersection',
-                          text: "SELECT g.rating, ST_X(g.geomout) As lon, ST_Y(g.geomout) As lat," +
-                          "(addy).streetname As street, " +
-                          "(addy).streettypeabbrev As streettype, (addy).location As city, (addy).stateabbrev As state, (addy).zip As zip, " +
-                          "(pprint_addy(addy)) As normalized_address " +
-                          "FROM geocode_intersection($1, $2, $3, $4, $5, $6) As g ORDER BY (addy).zip ASC",
-                          values: [loc.street1, loc.street2, loc.state || '', loc.city || '', loc.zip || '', options.limitResults > 2 ? options.limitResults : 2]  //must pass empty string param or else we get no tesults
-                        }, function (err, geocoderResult) {
-                          done();   //disconnect from pg and return the client to the pool
-                          //massage the normalized display address to reflect the fact its an intersection
-                          if (geocoderResult && geocoderResult.rows.length > 0){
-                            geocoderResult.rows[0].normalized_address = geocoderResult.rows[0].street + " " + geocoderResult.rows[0].streettype + " @ " + loc.street2.capitalize() + ', ' + geocoderResult.rows[0].city + ", " + geocoderResult.rows[0].state + (geocoderResult.rows[0].zip ? " " + geocoderResult.rows[0].zip : '');
-                          }
-                          return cbb(err, geocoderResult);
-                        });
+                        //check to see if first street has in fact a street number and it's a badly merged address (streetnumber + streetname at street 1 & street2)
+                        var streetParts = loc.street1.split(" ");
+                        if (streetParts.length > 0 && isNumber(streetParts[0])){
+                          //reformat location before passing down to next function
+                          location = loc.street1 + ", " + loc.city + ", " + loc.state + (loc.zip ? " " + loc.zip : '');
+                          cbb(null, null);  //allow normal address geocoding
+                        } else {
+                          //go for intersection geocode
+                          client.query({
+                            name: 'tiger_geocode_intersection',
+                            text: "SELECT g.rating, ST_X(g.geomout) As lon, ST_Y(g.geomout) As lat," +
+                            "(addy).streetname As street, " +
+                            "(addy).streettypeabbrev As streettype, (addy).location As city, (addy).stateabbrev As state, (addy).zip As zip, " +
+                            "(pprint_addy(addy)) As normalized_address " +
+                            "FROM geocode_intersection($1, $2, $3, $4, $5, $6) As g ORDER BY (addy).zip ASC",
+                            values: [loc.street1, loc.street2, loc.state || '', loc.city || '', loc.zip || '', options.limitResults > 2 ? options.limitResults : 2]  //must pass empty string param or else we get no tesults
+                          }, function (err, geocoderResult) {
+                            done();   //disconnect from pg and return the client to the pool
+                            //massage the normalized display address to reflect the fact its an intersection
+                            if (geocoderResult && geocoderResult.rows.length > 0) {
+                              geocoderResult.rows[0].normalized_address = geocoderResult.rows[0].street + " " + geocoderResult.rows[0].streettype + " @ " + loc.street2.capitalize() + ', ' + geocoderResult.rows[0].city + ", " + geocoderResult.rows[0].state + (geocoderResult.rows[0].zip ? " " + geocoderResult.rows[0].zip : '');
+                            }
+                            return cbb(err, geocoderResult);
+                          });
+                        }
                       }
                     }
                   ], function(err, geocoderResult){
@@ -413,4 +422,8 @@ module.exports = new Geocoder();
 
 String.prototype.capitalize = function() {
   return this.charAt(0).toUpperCase() + this.slice(1);
-}
+};
+
+function isNumber(n) {
+  return !isNaN(parseFloat(n)) && isFinite(n);
+};

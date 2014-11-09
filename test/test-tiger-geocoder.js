@@ -10,6 +10,16 @@ module.exports = {
 
     testGeocodeIntersectionMalformed: function(test){
         test.expect(3);
+        geocoder.geocode("4815 N. 112th Drive at 111th Ave. & Camelback,Phoenix, AZ", null, function(err, result){
+            test.ok(!err && result);
+            test.ok(result.result.formatted_address.match(/Phoenix/i));
+            test.ok(result.result.accuracy <20);
+            console.log(result);
+            test.done();
+        });
+    },
+    testGeocodeIntersectionMalformed2: function(test){
+        test.expect(3);
         geocoder.geocode("83rd Street at Hayden & Mountain View, Scottsdale, AZ", null, function(err, result){
             test.ok(!err && result);
             test.ok(result.result.formatted_address.match(/Scottsdale/i));
