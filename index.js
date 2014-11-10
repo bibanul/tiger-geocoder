@@ -21,6 +21,12 @@ else
   redis = require('redis').createClient();
 
 /**
+ * PG pool defaults
+ */
+pg.defaults.poolSize = process.env.PG_POOL_SIZE || 10;  //how many connections to keep in the pool (default 10)
+pg.defaults.poolIdleTimeout = process.env.PG_POOL_TIMEOUT || 30 //how long to keep an idle conn into the pool (defaults to 30 sec)
+
+/**
  * Geocoder
  */
 
