@@ -80,7 +80,7 @@ Geocoder.prototype = {
                   if (err) {
                     return cb(err, null)
                   }
-                  //use normalize_address to parse out what we can. generally it will come back as stree1 and stree2, based on this we decide
+                  //use normalize_address to parse out what we can. generally it will come back as street1 and street2, based on this we decide
                   async.waterfall([
                     function(cbb){
                       client.query({
@@ -89,7 +89,6 @@ Geocoder.prototype = {
                         "FROM parse_Address($1) As addy",
                         values: [parsedLoc]
                       }, function (err, parsedAddress) {
-                        done();   //disconnect from pg and return the client to the pool
                         return cbb(err, parsedAddress);
                       });
                     },
@@ -120,7 +119,6 @@ Geocoder.prototype = {
                             "FROM geocode_intersection($1, $2, $3, $4, $5, $6) As g ORDER BY (addy).zip ASC",
                             values: [loc.street1, loc.street2, loc.state || '', loc.city || '', loc.zip || '', options.limitResults > 2 ? options.limitResults : 2]  //must pass empty string param or else we get no tesults
                           }, function (err, geocoderResult) {
-                            done();   //disconnect from pg and return the client to the pool
                             //massage the normalized display address to reflect the fact its an intersection
                             if (geocoderResult && geocoderResult.rows.length > 0) {
                               geocoderResult.rows[0].normalized_address = geocoderResult.rows[0].street + " " + geocoderResult.rows[0].streettype + " @ " + loc.street2.capitalize() + ', ' + geocoderResult.rows[0].city + ", " + geocoderResult.rows[0].state + (geocoderResult.rows[0].zip ? " " + geocoderResult.rows[0].zip : '');
@@ -131,8 +129,9 @@ Geocoder.prototype = {
                       }
                     }
                   ], function(err, geocoderResult){
+                    done();   //disconnect from pg and return the client to the pool to avoid leaking it
                     //evaluate the result and decide how to continue main flow
-                    return cb(err, geocoderResult); //second result is our geocoded intersection
+                    return cb(err, geocoderResult);
                   });
                 })
               } else {
