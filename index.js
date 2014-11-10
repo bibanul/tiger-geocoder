@@ -16,9 +16,9 @@ if (process.env.REDISCLOUD_URL || process.env.REDISTOGO_URL || process.env.REDIS
   var redisUrl   = require('url').parse(process.env.REDISCLOUD_URL || process.env.REDISTOGO_URL || process.env.REDIS_URL);
   redis = require('redis').createClient(redisUrl.port, redisUrl.hostname)
   redis.auth(redisUrl.auth.split(":")[1]);
-}
-else
+} else {
   redis = require('redis').createClient();
+}
 
 /**
  * PG pool defaults
@@ -44,7 +44,7 @@ Geocoder.prototype = {
    * @param {String} location, required. any US address,city, state, zipcode
    * @param {Function} callback, required
    * @param {Object} options, optional
-   *  -> cacheTTL, a time to live in seconds for the redis entry, defaults to 1 hr
+   *  -> cacheTTL, a time to live in seconds for the redis entry, defaults to 30 days
    *  -> responseFormat, format the response to match popular providers: google, bing, etc. Defaults to internal JSON format
    *  -> includegeoid, to include the TIGER unique geoids for cross-referencing with Demographic tables or other external ACS data
    *  -> limitResults, number to limit the matches returned. defaults to 1
@@ -65,7 +65,7 @@ Geocoder.prototype = {
     redis.get('geo:' + location, function (err, result) {
       if (result) {
         result = JSON.parse(result);
-        console.log("Cache hit on: " + location);
+        if (process.env.development) console.log("Cache hit on: " + location);
         return callback(null, result);
       }
       else {
