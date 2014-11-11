@@ -31,9 +31,9 @@ module.exports = {
 
     testGeocodeIntersectionNoZip: function(test){
         test.expect(3);
-        geocoder.geocode("harlem ave @ archer, summit, il", null, function(err, result){
+        geocoder.geocode("Wicklow St at Michigan Ave, Duluth, MN", null, function(err, result){
             test.ok(!err && result);
-            test.ok(result.result.formatted_address.match(/summit/i));
+            test.ok(result.result.formatted_address.match(/duluth/i));
             test.ok(result.result.accuracy <20);
             console.log(result);
             test.done();

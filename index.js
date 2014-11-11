@@ -149,7 +149,7 @@ Geocoder.prototype = {
               //address normalizers are not perfect, we use both pagc_normalize_address and the PostGIS normalize_address
               //PAGC fails some simple parsing when street direction is provided such as 122 S. Main St while PostGIS one succeeds
               //hence, we observed that PostGIS one succeeds more often hence we use it first, and in case we don't get a result under rank 20, we will make a second call using PAGC one
-              if (!geocoderResult || (geocoderResult && (geocoderResult.rows.length == 0 || geocoderResult.rows.length > 0 && geocoderResult.rows[0].rating >= 20))) {
+              if (!geocoderResult || (geocoderResult && (geocoderResult.rows.length == 0 || (geocoderResult.rows.length > 0 && geocoderResult.rows[0].rating >= 20)))) {
                 pg.connect(conString, function (err, client, done) {
                   if (err) {
                     return cb(err, null)
@@ -172,7 +172,7 @@ Geocoder.prototype = {
             },
             function(geocoderResult, cb) {
               //PAGC call if needed
-              if (process.env.PAGC && (!geocoderResult || (geocoderResult && (geocoderResult.rows.length == 0 || geocoderResult.rows.length > 0 && geocoderResult.rows[0].rating >= 20)))) {
+              if (process.env.PAGC && (!geocoderResult || (geocoderResult && (geocoderResult.rows.length == 0 || (geocoderResult.rows.length > 0 && geocoderResult.rows[0].rating >= 20))))) {
                 //try PAGC parser
                 if (process.env.development) console.log("Trying PAGC for address: " + location);
                 pg.connect(conString, function (err, client, done) {
