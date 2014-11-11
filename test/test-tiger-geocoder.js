@@ -10,9 +10,9 @@ module.exports = {
 
     testGeocodeIntersectionMalformed: function(test){
         test.expect(3);
-        geocoder.geocode("4815 N. 112th Drive at 111th Ave. & Camelback,Phoenix, AZ", null, function(err, result){
+        geocoder.geocode("10712 E. 41st Street at 41st Street & HWY 169, Tulsa, OK", null, function(err, result){
             test.ok(!err && result);
-            test.ok(result.result.formatted_address.match(/Phoenix/i));
+            test.ok(result.result.formatted_address.match(/Tulsa/i));
             test.ok(result.result.accuracy <20);
             console.log(result);
             test.done();

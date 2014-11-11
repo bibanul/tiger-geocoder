@@ -100,7 +100,7 @@ Geocoder.prototype = {
                     },
                     function(parsedAddress, cbb) {
                       //if we have enough data, we go for it.
-                      if (!parsedAddress || parsedAddress.rows.length === 0) return cbb(err,null); //no results
+                      if (!parsedAddress || parsedAddress.rows.length === 0 || (parsedAddress.rows[0].zip && !isNumber(parsedAddress.rows[0].zip))) return cbb(err,null); //no results or zipcode not a number (tiger requires it as integer)
 
                       var loc = parsedAddress.rows[0];
                       if (loc.street1 && loc.street2 && loc.state) { //state is mandatory, won't return anything w/o state
