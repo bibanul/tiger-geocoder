@@ -100,7 +100,7 @@ Geocoder.prototype = {
                     },
                     function(parsedAddress, cbb) {
                       //if we have enough data, we go for it.
-                      if (!parsedAddress || parsedAddress.rows.length === 0 || (parsedAddress.rows[0].zip && !isNumber(parsedAddress.rows[0].zip))) return cbb(err,null); //no results or zipcode not a number (tiger requires it as integer)
+                      if (!parsedAddress || parsedAddress.rows.length === 0) return cbb(err,null); //no results
 
                       var loc = parsedAddress.rows[0];
                       if (loc.street1 && loc.street2 && loc.state) { //state is mandatory, won't return anything w/o state
@@ -123,7 +123,7 @@ Geocoder.prototype = {
                             "(addy).streettypeabbrev As streettype, (addy).location As city, (addy).stateabbrev As state, (addy).zip As zip, " +
                             "(pprint_addy(addy)) As normalized_address " +
                             "FROM geocode_intersection($1, $2, $3, $4, $5, $6) As g ORDER BY (addy).zip ASC",
-                            values: [loc.street1, loc.street2, loc.state || '', loc.city || '', loc.zip || '', options.limitResults > 2 ? options.limitResults : 2]  //must pass empty string param or else we get no tesults
+                            values: [loc.street1, loc.street2, loc.state || '', loc.city || '', loc.zip || '', (options.limitResults > 2 ? options.limitResults : 2)]  //must pass empty string param or else we get no tesults
                           }, function (err, geocoderResult) {
                             //massage the normalized display address to reflect the fact its an intersection
                             if (geocoderResult && geocoderResult.rows.length > 0) {
