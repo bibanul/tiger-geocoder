@@ -10,7 +10,7 @@ module.exports = {
 
     testGeocodeIntersectionMalformed: function(test){
         test.expect(3);
-        geocoder.geocode("10712 E. 41st Street at 41st Street & HWY 169, Tulsa, OK", null, function(err, result){
+        geocoder.geocode("10712 E. 41st Street at 41st Street", null, function(err, result){
             test.ok(!err && result);
             test.ok(result.result.formatted_address.match(/Tulsa/i));
             test.ok(result.result.accuracy <20);
@@ -31,7 +31,7 @@ module.exports = {
 
     testGeocodeIntersectionNoZip: function(test){
         test.expect(3);
-        geocoder.geocode("Wicklow St at Michigan Ave, Duluth, MN", null, function(err, result){
+        geocoder.geocode("POPLAR STREET at Fairfield Avenue, Bridgeport, CT,", null, function(err, result){
             test.ok(!err && result);
             test.ok(result.result.formatted_address.match(/duluth/i));
             test.ok(result.result.accuracy <20);

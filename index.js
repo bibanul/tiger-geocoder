@@ -78,8 +78,9 @@ Geocoder.prototype = {
               var parsedLoc = location.toLowerCase();
               parsedLoc =
                 location.indexOf(" at ") >= 0 ? location.replace(" at ", " @ ") :
-                  location.indexOf(" & ") >= 0 ? location.replace(" and ", " @ ") :
-                    location.indexOf(" and ") >= 0 ? location.replace(" & ", " @ "): location
+                  location.indexOf(" &amp; ") >= 0 ? location.replace(" &amp; ", " @ ") :
+                    location.indexOf(" & ") >= 0 ? location.replace(" & ", " @ ") :
+                      location.indexOf(" and ") >= 0 ? location.replace(" and ", " @ "): location
               ;
               if (parsedLoc.indexOf(" @ ") >= 0) {
                 pg.connect(conString, function (err, client, done) {
@@ -132,6 +133,9 @@ Geocoder.prototype = {
                             return cbb(err, geocoderResult);
                           });
                         }
+                      } else {
+                        //malformed intersection w/o state or missing one street. return err to prevent further geocoding
+                        return cbb(new Error("Malformed Address", 400));
                       }
                     }
                   ], function(err, geocoderResult){
@@ -180,9 +184,9 @@ Geocoder.prototype = {
                     return cb(err, null)
                   }
                   client.query({name: 'tiger_geocode_pagc', text: "SELECT g.rating, ST_X(g.geomout) As lon, ST_Y(g.geomout) As lat," +
-                      "(addy).address As streetnumber, (addy).streetname As street, " +
-                      "(addy).streettypeabbrev As streettype, (addy).location As city, (addy).stateabbrev As state, (addy).zip As zip, (pprint_addy(addy)) As normalized_address " +
-                      "FROM geocode(pagc_normalize_address($1), $2) As g",
+                    "(addy).address As streetnumber, (addy).streetname As street, " +
+                    "(addy).streettypeabbrev As streettype, (addy).location As city, (addy).stateabbrev As state, (addy).zip As zip, (pprint_addy(addy)) As normalized_address " +
+                    "FROM geocode(pagc_normalize_address($1), $2) As g",
                       values: [location, options.limitResults]},
                     function (err, results) {
                       done();   //disconnect from pg and return the client to the pool
@@ -190,7 +194,7 @@ Geocoder.prototype = {
                       if (!err &&
                         (geocoderResult && results.rows.length == 0) ||
                         (geocoderResult.rows.count > 0 && results.rows.length > 0 && geocoderResult.rows[0].rating > results.rows[0].rating)
-                        ) results = geocoderResult;
+                      ) results = geocoderResult;
 
                       return cb(err, results)
                     }
@@ -243,9 +247,9 @@ Geocoder.prototype = {
           if(err) {return callback( err, null )}
 
           client.query({name:"tiger_reverse_geocode", text: "SELECT (pprint_addy(rg.addy[1])) as normalized_address, $1 as lat, $2 as lon, "+
-            "rg.addy[1].address As streetnumber, rg.addy[1].streetname As street, "+
-            "rg.addy[1].streettypeabbrev As styp, rg.addy[1].location As city, rg.addy[1].stateabbrev As st, rg.addy[1].zip "+
-            "FROM reverse_geocode(ST_SetSRID(ST_Point($2, $1),4326)) rg LIMIT $3",
+          "rg.addy[1].address As streetnumber, rg.addy[1].streetname As street, "+
+          "rg.addy[1].streettypeabbrev As styp, rg.addy[1].location As city, rg.addy[1].stateabbrev As st, rg.addy[1].zip "+
+          "FROM reverse_geocode(ST_SetSRID(ST_Point($2, $1),4326)) rg LIMIT $3",
             values:[lat, lng, options.limitResults]}, function(err, results){
             done();
             if (err) {
@@ -255,7 +259,7 @@ Geocoder.prototype = {
               return callback(new Error('no rows found'), results)
             }
             if (results.rows.length == 0) {
-                return callback(new Error('no rows found'), results)
+              return callback(new Error('no rows found'), results)
             }
 
             var result = results.rows[0];
@@ -384,12 +388,12 @@ Geocoder.prototype = {
       client.query({name:"tiger_get_geoids", text: "SELECT * FROM get_geoids(ST_SetSRID(ST_Point($2, $1),4326), $3, $4, $5 ) addy_ex",
         values:[GeocodeResponse.result.location.lat, GeocodeResponse.result.location.lon, GeocodeResponse.result.city, GeocodeResponse.result.state, GeocodeResponse.result.zipcode]}, function(err, results) {
         done();   //disconnect from pg and return the client to the pool
-          if (err) {
-            return callback(err)
-          }
-          if (!results || !results.rows) {
-            return callback(null, null)
-          }
+        if (err) {
+          return callback(err)
+        }
+        if (!results || !results.rows) {
+          return callback(null, null)
+        }
         if (results && results.rows && results.rows.length > 0) {
           var result = results.rows[0];
           if (result.locationid) GeocodeResponse.result.cityId = result.locationid;
