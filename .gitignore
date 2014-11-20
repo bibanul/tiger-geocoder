@@ -1,2 +1,4 @@
 node_mdules/
 .idea/
+.DS_Store
+build
