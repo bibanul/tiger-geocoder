@@ -18,6 +18,10 @@
 
     npm install tiger-geocoder
 
+    or to run in Amazon EC2 see here:
+
+    https://github.com/bibanul/tiger-geocoder/wiki/Running-your-own-Geocoder-in-Amazon-EC2
+
 ### Usage
 
 You can pass a string representation of a location and a callback function to `geocoder.geocode`. It will accept: full street address, street and zip/city+state, zipcode, city + state.
