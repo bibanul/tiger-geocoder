@@ -6,6 +6,9 @@
     installed that also has TIGER 2010 database loaded (about 95 GiB). Instructions on
     installing Tiger are found here: http://postgis.net for postgis module and
     http://postgis.net/docs/manual-2.0/postgis_installation.html#loading_extras_tiger_geocoder
+    
+    If you need to run a ready installed server see instructions here:
+    https://github.com/bibanul/tiger-geocoder/wiki/Running-your-own-Geocoder-in-Amazon-EC2
 
     If you need help getting it setup, drop me a mail. Loading the TIGER database in postgres
     usually takes 1 week. This can also be hosted on Heroku. I ended up buying an SSD drive
