@@ -1,5 +1,5 @@
 # Geocoder
-    US Geocoder module that works on top of free TIGER Line data file from US Census bureau.
+    Amazon Ready Server instance from $1/hr no quotas. US Geocoder module that works on top of free TIGER Line data file from US Census bureau.
     Uses PostGIS min 2.x. Do your own geocoding for high volume and avoid paying to 3rd party providers.
     
     If you need to run a ready installed dedicated JSON API server in Amazon's AWS see instructions here:
